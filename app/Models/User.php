@@ -12,27 +12,6 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-
-
-
-    public function book(){
-        return $this->hasMany(Book::class);
-    }
-    public function userDownload() {
-        return $this->hasMany(UserDownload::class);
-    }
-    public function userWishlist() {
-        return $this->hasMany(userWishlist::class);
-    }
-    public function userCart() {
-        return $this->hasMany(userCart::class);
-    }
-    public function userComment() {
-        return $this->hasMany(userComment::class);
-    }
-    public function userCommentReplay() {
-        return $this->hasMany(userCommentReplay::class);
-    }
     /**
      * The attributes that are mass assignable.
      *
@@ -61,5 +40,6 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'password' => 'hashed',
     ];
 }

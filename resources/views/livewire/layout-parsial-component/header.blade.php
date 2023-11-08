@@ -647,11 +647,11 @@
                                         </div>
                                     </div>
                                 </li>
-                                <li class="menu-item-has-children current-menu-item">
-                                    <a href="javascript:void(0);">Home</a>
+                                <li class="menu-item-has-children {{ (request()->is('/')) ? 'current-menu-item' : '' }} ">
+                                    <a href="/" wire:navigate>Home</a>
                                 </li>
-                                <li class="menu-item-has-children">
-                                    <a href="javascript:void(0);">Library</a>
+                                <li class="menu-item-has-children {{ (request()->is('library')) ? 'current-menu-item' : '' }}">
+                                    <a href="/library" wire:navigate>Library</a>
                                 </li>
                                 <li class="menu-item-has-children">
                                     <a href="javascript:void(0);">Authors</a>

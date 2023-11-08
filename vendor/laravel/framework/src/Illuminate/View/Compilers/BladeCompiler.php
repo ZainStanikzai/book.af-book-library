@@ -31,6 +31,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
         Concerns\CompilesLoops,
         Concerns\CompilesRawPhp,
         Concerns\CompilesStacks,
+        Concerns\CompilesStyles,
         Concerns\CompilesTranslations,
         ReflectsClosures;
 
@@ -54,6 +55,13 @@ class BladeCompiler extends Compiler implements CompilerInterface
      * @var array
      */
     protected $conditions = [];
+
+    /**
+     * The registered string preparation callbacks.
+     *
+     * @var array
+     */
+    protected $prepareStringsForCompilationUsing = [];
 
     /**
      * All of the registered precompilers.
@@ -248,11 +256,17 @@ class BladeCompiler extends Compiler implements CompilerInterface
     {
         [$this->footer, $result] = [[], ''];
 
+        foreach ($this->prepareStringsForCompilationUsing as $callback) {
+            $value = $callback($value);
+        }
+
+        $value = $this->storeUncompiledBlocks($value);
+
         // First we will compile the Blade component tags. This is a precompile style
         // step which compiles the component Blade tags into @component directives
         // that may be used by Blade. Then we should call any other precompilers.
         $value = $this->compileComponentTags(
-            $this->compileComments($this->storeUncompiledBlocks($value))
+            $this->compileComments($value)
         );
 
         foreach ($this->precompilers as $precompiler) {
@@ -506,6 +520,8 @@ class BladeCompiler extends Compiler implements CompilerInterface
     {
         preg_match_all('/\B@(@?\w+(?:::\w+)?)([ \t]*)(\( ( [\S\s]*? ) \))?/x', $template, $matches);
 
+        $offset = 0;
+
         for ($i = 0; isset($matches[0][$i]); $i++) {
             $match = [
                 $matches[0][$i],
@@ -537,10 +553,44 @@ class BladeCompiler extends Compiler implements CompilerInterface
                 $match[4] = $match[4].$rest;
             }
 
-            $template = Str::replaceFirst($match[0], $this->compileStatement($match), $template);
+            [$template, $offset] = $this->replaceFirstStatement(
+                $match[0],
+                $this->compileStatement($match),
+                $template,
+                $offset
+            );
         }
 
         return $template;
+    }
+
+    /**
+     * Replace the first match for a statement compilation operation.
+     *
+     * @param  string  $search
+     * @param  string  $replace
+     * @param  string  $subject
+     * @param  int  $offset
+     * @return array
+     */
+    protected function replaceFirstStatement($search, $replace, $subject, $offset)
+    {
+        $search = (string) $search;
+
+        if ($search === '') {
+            return $subject;
+        }
+
+        $position = strpos($subject, $search, $offset);
+
+        if ($position !== false) {
+            return [
+                substr_replace($subject, $replace, $position, strlen($search)),
+                $position + strlen($replace),
+            ];
+        }
+
+        return [$subject, 0];
     }
 
     /**
@@ -684,7 +734,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
      * Check the result of a condition.
      *
      * @param  string  $name
-     * @param  array  ...$parameters
+     * @param  mixed  ...$parameters
      * @return bool
      */
     public function check($name, ...$parameters)
@@ -908,6 +958,19 @@ class BladeCompiler extends Compiler implements CompilerInterface
     public function getCustomDirectives()
     {
         return $this->customDirectives;
+    }
+
+    /**
+     * Indicate that the following callable should be used to prepare strings for compilation.
+     *
+     * @param  callable  $callback
+     * @return $this
+     */
+    public function prepareStringsForCompilationUsing(callable $callback)
+    {
+        $this->prepareStringsForCompilationUsing[] = $callback;
+
+        return $this;
     }
 
     /**
