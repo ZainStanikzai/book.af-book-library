@@ -653,8 +653,8 @@
                                 <li class="menu-item-has-children {{ (request()->is('library')) ? 'current-menu-item' : '' }}">
                                     <a href="/library" wire:navigate>Library</a>
                                 </li>
-                                <li class="menu-item-has-children">
-                                    <a href="javascript:void(0);">Authors</a>
+                                <li class="menu-item-has-children {{ (request()->is('author')) ? 'current-menu-item' : '' }}">
+                                    <a href="/author" wire:navigate>Authors</a>
                                 </li>
                                 <li><a href="aboutus.html">About Us</a></li>
                                 <li><a href="contactus.html">Contact</a></li>

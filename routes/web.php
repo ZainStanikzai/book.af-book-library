@@ -15,4 +15,5 @@ use Livewire\Attributes\Url;
 
 Route::get("/",App\Livewire\Index::class)->name("front.home");
 Route::get("/library",App\Livewire\Library::class)->name("front.library");
+Route::get("/author",App\Livewire\Author::class)->name("front.author");
 
