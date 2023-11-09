@@ -1,10 +1,10 @@
 <div id="tg-homeslider" class="tg-homeslider tg-homeslidervtwo tg-haslayout owl-carousel">
-    <div class="item" data-vide-bg="poster: {{ asset('assets/images/slider/img-03.jpg') }}" data-vide-options="position: 0% 50%">
+    <div class="item">
         <div class="container">
             <div class="row">
                 <div class="col-xs-12 col-sm-12 col-md-10 col-md-push-1 col-lg-10 col-lg-push-1">
                     <div class="tg-slidercontent">
-                        <figure class="tg-authorimg"><img src="{{ asset('assets/images/img-03.png') }} " alt="image description"></figure>
+                        <figure class="tg-authorimg"><img src="{{ asset('assets/images/img-03.png') }}" alt="image description"></figure>
                         <h1>Search your favourite Book</h1>
                         <div class="tg-description">
                             <p>Consectetur adipisicing elit eiusmod lotanae pokalate sinote tempor incididunt ut labore popouye asoter.</p>
@@ -18,7 +18,7 @@
             </div>
         </div>
     </div>
-    <div class="item" data-vide-bg="poster:{{ asset('assets/images/slider/img-03.jpg') }} " data-vide-options="position: 0% 50%">
+    <div class="item" data-vide-bg="poster:{{ asset('assets/images/img-03.jpg') }}" data-vide-options="position: 0% 50%">
         <div class="container">
             <div class="row">
                 <div class="col-xs-12 col-sm-12 col-md-10 col-md-push-1 col-lg-10 col-lg-push-1">

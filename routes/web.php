@@ -1,28 +1,19 @@
 <?php
 
-use App\Models\Book;
-use App\Models\BookLanguage;
-use App\Models\BookMedia;
-use App\Models\Category;
-use App\Models\SubCategory;
 use Illuminate\Support\Facades\Route;
-use App\Models\User;
-use App\Models\UserDownload;
+use Livewire\Attributes\Url;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 |
 | Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
 |
 */
 
-Route::get("/",App\Http\Livewire\Home::class);
-Route::get("/test", function(){
-    $book = UserDownload::where("id","2")->first();
+Route::get("/",App\Livewire\Index::class)->name("front.home");
+Route::get("/library",App\Livewire\Library::class)->name("front.library");
+Route::get("/author",App\Livewire\Author::class)->name("front.author");
 
-
-    return $book->book;
-});

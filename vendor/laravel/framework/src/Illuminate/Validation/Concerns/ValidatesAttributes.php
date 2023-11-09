@@ -7,6 +7,7 @@ use Brick\Math\BigNumber;
 use Brick\Math\Exception\MathException as BrickMathException;
 use DateTime;
 use DateTimeInterface;
+use DateTimeZone;
 use Egulias\EmailValidator\EmailValidator;
 use Egulias\EmailValidator\Validation\DNSCheckValidation;
 use Egulias\EmailValidator\Validation\Extra\SpoofCheckValidation;
@@ -25,6 +26,7 @@ use Illuminate\Validation\ValidationData;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use ValueError;
 
 trait ValidatesAttributes
 {
@@ -126,7 +128,7 @@ trait ValidatesAttributes
                 if (is_array($records) && count($records) > 0) {
                     return true;
                 }
-            } catch (Exception $e) {
+            } catch (Exception) {
                 return false;
             }
         }
@@ -249,7 +251,7 @@ trait ValidatesAttributes
             return $this->checkDateTimeOrder($format, $value, $parameters[0], $operator);
         }
 
-        if (! $date = $this->getDateTimestamp($parameters[0])) {
+        if (is_null($date = $this->getDateTimestamp($parameters[0]))) {
             $date = $this->getDateTimestamp($this->getValue($parameters[0]));
         }
 
@@ -332,7 +334,7 @@ trait ValidatesAttributes
     {
         try {
             return @Date::parse($value) ?: null;
-        } catch (Exception $e) {
+        } catch (Exception) {
             //
         }
     }
@@ -455,7 +457,7 @@ trait ValidatesAttributes
 
         return with(
             BigNumber::of($this->getSize($attribute, $value)),
-            fn ($size) => $size->isGreaterThanOrEqualTo($parameters[0]) && $size->isLessThanOrEqualTo($parameters[1])
+            fn ($size) => $size->isGreaterThanOrEqualTo($this->trim($parameters[0])) && $size->isLessThanOrEqualTo($this->trim($parameters[1]))
         );
     }
 
@@ -524,7 +526,7 @@ trait ValidatesAttributes
             if ((! is_string($value) && ! is_numeric($value)) || strtotime($value) === false) {
                 return false;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             return false;
         }
 
@@ -550,10 +552,14 @@ trait ValidatesAttributes
         }
 
         foreach ($parameters as $format) {
-            $date = DateTime::createFromFormat('!'.$format, $value);
+            try {
+                $date = DateTime::createFromFormat('!'.$format, $value);
 
-            if ($date && $date->format($format) == $value) {
-                return true;
+                if ($date && $date->format($format) == $value) {
+                    return true;
+                }
+            } catch (ValueError) {
+                return false;
             }
         }
 
@@ -585,15 +591,17 @@ trait ValidatesAttributes
      */
     public function validateDecimal($attribute, $value, $parameters)
     {
+        $this->requireParameterCount(1, $parameters, 'decimal');
+
         if (! $this->validateNumeric($attribute, $value)) {
             return false;
         }
 
-        $this->requireParameterCount(1, $parameters, 'decimal');
-
         $matches = [];
 
-        preg_match('/^[+-]?\d*.(\d*)$/', $value, $matches);
+        if (preg_match('/^[+-]?\d*\.?(\d*)$/', $value, $matches) !== 1) {
+            return false;
+        }
 
         $decimals = strlen(end($matches));
 
@@ -678,13 +686,21 @@ trait ValidatesAttributes
             return true;
         }
 
-        if (! $this->isValidFileInstance($value) || ! $sizeDetails = @getimagesize($value->getRealPath())) {
+        if (! $this->isValidFileInstance($value)) {
+            return false;
+        }
+
+        $dimensions = method_exists($value, 'dimensions')
+                ? $value->dimensions()
+                : @getimagesize($value->getRealPath());
+
+        if (! $dimensions) {
             return false;
         }
 
         $this->requireParameterCount(1, $parameters, 'dimensions');
 
-        [$width, $height] = $sizeDetails;
+        [$width, $height] = $dimensions;
 
         $parameters = $this->parseNamedParameters($parameters);
 
@@ -847,6 +863,10 @@ trait ValidatesAttributes
         $column = $this->getQueryColumn($parameters, $attribute);
 
         $expected = is_array($value) ? count(array_unique($value)) : 1;
+
+        if ($expected === 0) {
+            return true;
+        }
 
         return $this->getExistCount(
             $connection, $table, $column, $value, $parameters
@@ -1098,7 +1118,7 @@ trait ValidatesAttributes
         $this->shouldBeNumeric($attribute, 'Gt');
 
         if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
-            return BigNumber::of($this->getSize($attribute, $value))->isGreaterThan($parameters[0]);
+            return BigNumber::of($this->getSize($attribute, $value))->isGreaterThan($this->trim($parameters[0]));
         }
 
         if (is_numeric($parameters[0])) {
@@ -1106,7 +1126,7 @@ trait ValidatesAttributes
         }
 
         if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
-            return BigNumber::of($value)->isGreaterThan($comparedToValue);
+            return BigNumber::of($this->trim($value))->isGreaterThan($this->trim($comparedToValue));
         }
 
         if (! $this->isSameType($value, $comparedToValue)) {
@@ -1133,7 +1153,7 @@ trait ValidatesAttributes
         $this->shouldBeNumeric($attribute, 'Lt');
 
         if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
-            return BigNumber::of($this->getSize($attribute, $value))->isLessThan($parameters[0]);
+            return BigNumber::of($this->getSize($attribute, $value))->isLessThan($this->trim($parameters[0]));
         }
 
         if (is_numeric($parameters[0])) {
@@ -1141,7 +1161,7 @@ trait ValidatesAttributes
         }
 
         if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
-            return BigNumber::of($value)->isLessThan($comparedToValue);
+            return BigNumber::of($this->trim($value))->isLessThan($this->trim($comparedToValue));
         }
 
         if (! $this->isSameType($value, $comparedToValue)) {
@@ -1168,7 +1188,7 @@ trait ValidatesAttributes
         $this->shouldBeNumeric($attribute, 'Gte');
 
         if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
-            return BigNumber::of($this->getSize($attribute, $value))->isGreaterThanOrEqualTo($parameters[0]);
+            return BigNumber::of($this->getSize($attribute, $value))->isGreaterThanOrEqualTo($this->trim($parameters[0]));
         }
 
         if (is_numeric($parameters[0])) {
@@ -1176,7 +1196,7 @@ trait ValidatesAttributes
         }
 
         if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
-            return BigNumber::of($value)->isGreaterThanOrEqualTo($comparedToValue);
+            return BigNumber::of($this->trim($value))->isGreaterThanOrEqualTo($this->trim($comparedToValue));
         }
 
         if (! $this->isSameType($value, $comparedToValue)) {
@@ -1203,7 +1223,7 @@ trait ValidatesAttributes
         $this->shouldBeNumeric($attribute, 'Lte');
 
         if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
-            return BigNumber::of($this->getSize($attribute, $value))->isLessThanOrEqualTo($parameters[0]);
+            return BigNumber::of($this->getSize($attribute, $value))->isLessThanOrEqualTo($this->trim($parameters[0]));
         }
 
         if (is_numeric($parameters[0])) {
@@ -1211,7 +1231,7 @@ trait ValidatesAttributes
         }
 
         if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
-            return BigNumber::of($value)->isLessThanOrEqualTo($comparedToValue);
+            return BigNumber::of($this->trim($value))->isLessThanOrEqualTo($this->trim($comparedToValue));
         }
 
         if (! $this->isSameType($value, $comparedToValue)) {
@@ -1403,7 +1423,7 @@ trait ValidatesAttributes
             return false;
         }
 
-        return BigNumber::of($this->getSize($attribute, $value))->isLessThanOrEqualTo($parameters[0]);
+        return BigNumber::of($this->getSize($attribute, $value))->isLessThanOrEqualTo($this->trim($parameters[0]));
     }
 
     /**
@@ -1416,7 +1436,7 @@ trait ValidatesAttributes
      */
     public function validateMaxDigits($attribute, $value, $parameters)
     {
-        $this->requireParameterCount(1, $parameters, 'max');
+        $this->requireParameterCount(1, $parameters, 'max_digits');
 
         $length = strlen((string) $value);
 
@@ -1505,7 +1525,7 @@ trait ValidatesAttributes
     {
         $this->requireParameterCount(1, $parameters, 'min');
 
-        return BigNumber::of($this->getSize($attribute, $value))->isGreaterThanOrEqualTo($parameters[0]);
+        return BigNumber::of($this->getSize($attribute, $value))->isGreaterThanOrEqualTo($this->trim($parameters[0]));
     }
 
     /**
@@ -1518,7 +1538,7 @@ trait ValidatesAttributes
      */
     public function validateMinDigits($attribute, $value, $parameters)
     {
-        $this->requireParameterCount(1, $parameters, 'min');
+        $this->requireParameterCount(1, $parameters, 'min_digits');
 
         $length = strlen((string) $value);
 
@@ -1592,7 +1612,11 @@ trait ValidatesAttributes
     {
         $this->requireParameterCount(1, $parameters, 'missing_with');
 
-        return ! Arr::hasAny($this->data, $parameters);
+        if (Arr::hasAny($this->data, $parameters)) {
+            return $this->validateMissing($attribute, $value, $parameters);
+        }
+
+        return true;
     }
 
     /**
@@ -1605,9 +1629,13 @@ trait ValidatesAttributes
      */
     public function validateMissingWithAll($attribute, $value, $parameters)
     {
-        $this->requireParameterCount(1, $parameters, 'missing_with');
+        $this->requireParameterCount(1, $parameters, 'missing_with_all');
 
-        return ! Arr::has($this->data, $parameters);
+        if (Arr::has($this->data, $parameters)) {
+            return $this->validateMissing($attribute, $value, $parameters);
+        }
+
+        return true;
     }
 
     /**
@@ -1627,8 +1655,8 @@ trait ValidatesAttributes
         }
 
         try {
-            $numerator = BigDecimal::of($value);
-            $denominator = BigDecimal::of($parameters[0]);
+            $numerator = BigDecimal::of($this->trim($value));
+            $denominator = BigDecimal::of($this->trim($parameters[0]));
 
             if ($numerator->isZero() && $denominator->isZero()) {
                 return false;
@@ -1644,7 +1672,7 @@ trait ValidatesAttributes
 
             return $numerator->remainder($denominator)->isZero();
         } catch (BrickMathException $e) {
-            throw new MathException('An error occurred while handling the mulitple_of input values.', previous: $e);
+            throw new MathException('An error occurred while handling the multiple_of input values.', previous: $e);
         }
     }
 
@@ -2180,7 +2208,7 @@ trait ValidatesAttributes
     {
         $this->requireParameterCount(1, $parameters, 'size');
 
-        return BigNumber::of($this->getSize($attribute, $value))->isEqualTo($parameters[0]);
+        return BigNumber::of($this->getSize($attribute, $value))->isEqualTo($this->trim($parameters[0]));
     }
 
     /**
@@ -2264,11 +2292,15 @@ trait ValidatesAttributes
      *
      * @param  string  $attribute
      * @param  mixed  $value
+     * @param  array<string, null|string>  $parameters
      * @return bool
      */
-    public function validateTimezone($attribute, $value)
+    public function validateTimezone($attribute, $value, $parameters = [])
     {
-        return in_array($value, timezone_identifiers_list(), true);
+        return in_array($value, timezone_identifiers_list(
+            constant(DateTimeZone::class.'::'.Str::upper($parameters[0] ?? 'ALL')),
+            isset($parameters[1]) ? Str::upper($parameters[1]) : null,
+        ), true);
     }
 
     /**
@@ -2276,38 +2308,12 @@ trait ValidatesAttributes
      *
      * @param  string  $attribute
      * @param  mixed  $value
+     * @param  array<int, string>  $parameters
      * @return bool
      */
-    public function validateUrl($attribute, $value)
+    public function validateUrl($attribute, $value, $parameters = [])
     {
-        if (! is_string($value)) {
-            return false;
-        }
-
-        /*
-         * This pattern is derived from Symfony\Component\Validator\Constraints\UrlValidator (5.0.7).
-         *
-         * (c) Fabien Potencier <fabien@symfony.com> http://symfony.com
-         */
-        $pattern = '~^
-            (aaa|aaas|about|acap|acct|acd|acr|adiumxtra|adt|afp|afs|aim|amss|android|appdata|apt|ark|attachment|aw|barion|beshare|bitcoin|bitcoincash|blob|bolo|browserext|calculator|callto|cap|cast|casts|chrome|chrome-extension|cid|coap|coap\+tcp|coap\+ws|coaps|coaps\+tcp|coaps\+ws|com-eventbrite-attendee|content|conti|crid|cvs|dab|data|dav|diaspora|dict|did|dis|dlna-playcontainer|dlna-playsingle|dns|dntp|dpp|drm|drop|dtn|dvb|ed2k|elsi|example|facetime|fax|feed|feedready|file|filesystem|finger|first-run-pen-experience|fish|fm|ftp|fuchsia-pkg|geo|gg|git|gizmoproject|go|gopher|graph|gtalk|h323|ham|hcap|hcp|http|https|hxxp|hxxps|hydrazone|iax|icap|icon|im|imap|info|iotdisco|ipn|ipp|ipps|irc|irc6|ircs|iris|iris\.beep|iris\.lwz|iris\.xpc|iris\.xpcs|isostore|itms|jabber|jar|jms|keyparc|lastfm|ldap|ldaps|leaptofrogans|lorawan|lvlt|magnet|mailserver|mailto|maps|market|message|mid|mms|modem|mongodb|moz|ms-access|ms-browser-extension|ms-calculator|ms-drive-to|ms-enrollment|ms-excel|ms-eyecontrolspeech|ms-gamebarservices|ms-gamingoverlay|ms-getoffice|ms-help|ms-infopath|ms-inputapp|ms-lockscreencomponent-config|ms-media-stream-id|ms-mixedrealitycapture|ms-mobileplans|ms-officeapp|ms-people|ms-project|ms-powerpoint|ms-publisher|ms-restoretabcompanion|ms-screenclip|ms-screensketch|ms-search|ms-search-repair|ms-secondary-screen-controller|ms-secondary-screen-setup|ms-settings|ms-settings-airplanemode|ms-settings-bluetooth|ms-settings-camera|ms-settings-cellular|ms-settings-cloudstorage|ms-settings-connectabledevices|ms-settings-displays-topology|ms-settings-emailandaccounts|ms-settings-language|ms-settings-location|ms-settings-lock|ms-settings-nfctransactions|ms-settings-notifications|ms-settings-power|ms-settings-privacy|ms-settings-proximity|ms-settings-screenrotation|ms-settings-wifi|ms-settings-workplace|ms-spd|ms-sttoverlay|ms-transit-to|ms-useractivityset|ms-virtualtouchpad|ms-visio|ms-walk-to|ms-whiteboard|ms-whiteboard-cmd|ms-word|msnim|msrp|msrps|mss|mtqp|mumble|mupdate|mvn|news|nfs|ni|nih|nntp|notes|ocf|oid|onenote|onenote-cmd|opaquelocktoken|openpgp4fpr|pack|palm|paparazzi|payto|pkcs11|platform|pop|pres|prospero|proxy|pwid|psyc|pttp|qb|query|redis|rediss|reload|res|resource|rmi|rsync|rtmfp|rtmp|rtsp|rtsps|rtspu|s3|secondlife|service|session|sftp|sgn|shttp|sieve|simpleledger|sip|sips|skype|smb|sms|smtp|snews|snmp|soap\.beep|soap\.beeps|soldat|spiffe|spotify|ssh|steam|stun|stuns|submit|svn|tag|teamspeak|tel|teliaeid|telnet|tftp|tg|things|thismessage|tip|tn3270|tool|ts3server|turn|turns|tv|udp|unreal|urn|ut2004|v-event|vemmi|ventrilo|videotex|vnc|view-source|wais|webcal|wpid|ws|wss|wtai|wyciwyg|xcon|xcon-userid|xfire|xmlrpc\.beep|xmlrpc\.beeps|xmpp|xri|ymsgr|z39\.50|z39\.50r|z39\.50s)://                                 # protocol
-            (((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+:)?((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+)@)?  # basic auth
-            (
-                ([\pL\pN\pS\-\_\.])+(\.?([\pL\pN]|xn\-\-[\pL\pN-]+)+\.?) # a domain name
-                    |                                                 # or
-                \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}                    # an IP address
-                    |                                                 # or
-                \[
-                    (?:(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){6})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:::(?:(?:(?:[0-9a-f]{1,4})):){5})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){4})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,1}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){3})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,2}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){2})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,3}(?:(?:[0-9a-f]{1,4})))?::(?:(?:[0-9a-f]{1,4})):)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,4}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,5}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,6}(?:(?:[0-9a-f]{1,4})))?::))))
-                \]  # an IPv6 address
-            )
-            (:[0-9]+)?                              # a port (optional)
-            (?:/ (?:[\pL\pN\-._\~!$&\'()*+,;=:@]|%[0-9A-Fa-f]{2})* )*          # a path
-            (?:\? (?:[\pL\pN\-._\~!$&\'\[\]()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?   # a query (optional)
-            (?:\# (?:[\pL\pN\-._\~!$&\'()*+,;=:@/?]|%[0-9A-Fa-f]{2})* )?       # a fragment (optional)
-        $~ixu';
-
-        return preg_match($pattern, $value) > 0;
+        return Str::isUrl($value, $parameters);
     }
 
     /**
@@ -2350,7 +2356,7 @@ trait ValidatesAttributes
         // is the size. If it is a file, we take kilobytes, and for a string the
         // entire length of the string will be considered the attribute size.
         if (is_numeric($value) && $hasNumeric) {
-            return $value;
+            return $this->ensureExponentWithinAllowedRange($attribute, $this->trim($value));
         } elseif (is_array($value)) {
             return count($value);
         } elseif ($value instanceof File) {
@@ -2455,5 +2461,46 @@ trait ValidatesAttributes
         if (is_numeric($this->getValue($attribute))) {
             $this->numericRules[] = $rule;
         }
+    }
+
+    /**
+     * Trim the value if it is a string.
+     *
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function trim($value)
+    {
+        return is_string($value) ? trim($value) : $value;
+    }
+
+    /**
+     * Ensure the exponent is within the allowed range.
+     *
+     * @param  string  $attribute
+     * @param  mixed  $value
+     * @return mixed
+     */
+    protected function ensureExponentWithinAllowedRange($attribute, $value)
+    {
+        $stringValue = (string) $value;
+
+        if (! is_numeric($value) || ! Str::contains($stringValue, 'e', ignoreCase: true)) {
+            return $value;
+        }
+
+        $scale = (int) (Str::contains($stringValue, 'e')
+            ? Str::after($stringValue, 'e')
+            : Str::after($stringValue, 'E'));
+
+        $withinRange = (
+            $this->ensureExponentWithinAllowedRangeUsing ?? fn ($scale) => $scale <= 1000 && $scale >= -1000
+        )($scale, $attribute, $value);
+
+        if (! $withinRange) {
+            throw new MathException('Scientific notation exponent outside of allowed range.');
+        }
+
+        return $value;
     }
 }
