@@ -656,8 +656,6 @@
                                 <li class="menu-item-has-children {{ (request()->is('author')) ? 'current-menu-item' : '' }}">
                                     <a href="/author" wire:navigate>Authors</a>
                                 </li>
-                                <li><a href="aboutus.html">About Us</a></li>
-                                <li><a href="contactus.html">Contact</a></li>
                             </ul>
                             </div>
                         </nav>
