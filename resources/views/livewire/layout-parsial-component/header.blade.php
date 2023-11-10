@@ -650,11 +650,11 @@
                                 <li class="menu-item-has-children {{ (request()->is('/')) ? 'current-menu-item' : '' }} ">
                                     <a href="/" wire:navigate>Home</a>
                                 </li>
-                                <li class="menu-item-has-children {{ (request()->is('library')) ? 'current-menu-item' : '' }}">
-                                    <a href="/library" wire:navigate>Library</a>
+                                <li class="menu-item-has-children {{ (request()->is('book','book/*')) ? 'current-menu-item' : '' }}">
+                                    <a href="{{ route('front.library') }}" wire:navigate>Library</a>
                                 </li>
-                                <li class="menu-item-has-children {{ (request()->is('author')) ? 'current-menu-item' : '' }}">
-                                    <a href="/author" wire:navigate>Authors</a>
+                                <li class="menu-item-has-children {{ (request()->is('author','author/*')) ? 'current-menu-item' : '' }}">
+                                    <a href="{{ route('front.author') }}" wire:navigate>Authors</a>
                                 </li>
                             </ul>
                             </div>

@@ -470,38 +470,45 @@
 										</div>
 									</div>
 								</div>
+								<nav aria-label="Page navigation">
+								  <ul class="pagination    ">
+									<li class="page-item disabled">
+									  <a class="page-link" href="#" aria-label="Previous">
+										<span aria-hidden="true">&laquo;</span>
+									  </a>
+									</li>
+									<li class="page-item active" aria-current="page"><a class="page-link" href="#">1</a></li>
+									<li class="page-item"><a class="page-link" href="#">2</a></li>
+									<li class="page-item"><a class="page-link" href="#">3</a></li>
+									<li class="page-item">
+									  <a class="page-link" href="#" aria-label="Next">
+										<span aria-hidden="true">&raquo;</span>
+									  </a>
+									</li>
+								  </ul>
+								</nav>
 							</div>
 							<div class="col-xs-12 col-sm-4 col-md-4 col-lg-3 pull-left">
 								<aside id="tg-sidebar" class="tg-sidebar">
-									<div class="tg-widget tg-widgetsearch">
+									{{-- search bar start --}}
+									{{-- <div class="tg-widget tg-widgetsearch">
 										<form class="tg-formtheme tg-formsearch">
 											<div class="form-group">
 												<button type="submit"><i class="icon-magnifier"></i></button>
 												<input type="search" name="search" class="form-group" placeholder="Search by title, author, key...">
 											</div>
 										</form>
-									</div>
+									</div> --}}
+									{{-- search bar end --}}
 									<div class="tg-widget tg-catagories">
 										<div class="tg-widgettitle">
 											<h3>Categories</h3>
 										</div>
 										<div class="tg-widgetcontent">
-											<ul>
-												<li><a href="javascript:void(0);"><span>Art &amp; Photography</span><em>28245</em></a></li>
-												<li><a href="javascript:void(0);"><span>Biography</span><em>4856</em></a></li>
-												<li><a href="javascript:void(0);"><span>Children’s Book</span><em>8654</em></a></li>
-												<li><a href="javascript:void(0);"><span>Craft &amp; Hobbies</span><em>6247</em></a></li>
-												<li><a href="javascript:void(0);"><span>Crime &amp; Thriller</span><em>888654</em></a></li>
-												<li><a href="javascript:void(0);"><span>Fantasy &amp; Horror</span><em>873144</em></a></li>
-												<li><a href="javascript:void(0);"><span>Fiction</span><em>18465</em></a></li>
-												<li><a href="javascript:void(0);"><span>Fod &amp; Drink</span><em>3148</em></a></li>
-												<li><a href="javascript:void(0);"><span>Graphic, Anime &amp; Manga</span><em>77531</em></a></li>
-												<li><a href="javascript:void(0);"><span>Science Fiction</span><em>9247</em></a></li>
-												<li><a href="javascript:void(0);"><span>View All</span></a></li>
-											</ul>
+											@livewire('PartialPageComponents.LibraryComponents.Category')
 										</div>
 									</div>
-									<div class="tg-widget tg-widgettrending">
+									{{-- <div class="tg-widget tg-widgettrending">
 										<div class="tg-widgettitle">
 											<h3>Trending Products</h3>
 										</div>
@@ -553,8 +560,8 @@
 												</li>
 											</ul>
 										</div>
-									</div>
-									<div class="tg-widget tg-widgetinstagram">
+									</div> --}}
+									{{-- <div class="tg-widget tg-widgetinstagram">
 										<div class="tg-widgettitle">
 											<h3>Instagram</h3>
 										</div>
@@ -616,50 +623,14 @@
 												</li>
 											</ul>
 										</div>
-									</div>
+									</div> --}}
 									<div class="tg-widget tg-widgetblogers">
 										<div class="tg-widgettitle">
 											<h3>Top Bloogers</h3>
 										</div>
 										<div class="tg-widgetcontent">
-											<ul>
-												<li>
-													<div class="tg-author">
-														<figure><a href="javascript:void(0);"><img src="{{ asset('assets/images/author/imag-03.jpg') }}" alt="image description"></a></figure>
-														<div class="tg-authorcontent">
-															<h2><a href="javascript:void(0);">Jude Morphew</a></h2>
-															<span>21,658 Published Books</span>
-														</div>
-													</div>
-												</li>
-												<li>
-													<div class="tg-author">
-														<figure><a href="javascript:void(0);"><img src="{{ asset('assets/images/author/imag-04.jpg') }}" alt="image description"></a></figure>
-														<div class="tg-authorcontent">
-															<h2><a href="javascript:void(0);">Jude Morphew</a></h2>
-															<span>21,658 Published Books</span>
-														</div>
-													</div>
-												</li>
-												<li>
-													<div class="tg-author">
-														<figure><a href="javascript:void(0);"><img src="{{ asset('assets/images/author/imag-05.jpg') }}" alt="image description"></a></figure>
-														<div class="tg-authorcontent">
-															<h2><a href="javascript:void(0);">Jude Morphew</a></h2>
-															<span>21,658 Published Books</span>
-														</div>
-													</div>
-												</li>
-												<li>
-													<div class="tg-author">
-														<figure><a href="javascript:void(0);"><img src="{{ asset('assets/images/author/imag-06.jpg') }}" alt="image description"></a></figure>
-														<div class="tg-authorcontent">
-															<h2><a href="javascript:void(0);">Jude Morphew</a></h2>
-															<span>21,658 Published Books</span>
-														</div>
-													</div>
-												</li>
-											</ul>
+											@livewire('PartialPageComponents.LibraryComponents.TopBlooger')
+
 										</div>
 									</div>
 								</aside>
